@@ -1,13 +1,15 @@
+mod discord;
 mod github;
 mod mailgun;
 mod team_api;
 
+use crate::discord::SyncDiscord;
 use crate::github::SyncGitHub;
 use crate::team_api::TeamApi;
 use failure::{Error, ResultExt};
 use log::{error, info, warn};
 
-const AVAILABLE_SERVICES: &[&str] = &["github", "mailgun"];
+const AVAILABLE_SERVICES: &[&str] = &["github", "mailgun", "discord"];
 const USER_AGENT: &str = "rust-lang teams sync (https://github.com/rust-lang/sync-team)";
 
 fn usage() {
@@ -85,6 +87,12 @@ fn app() -> Result<(), Error> {
                     "failed to get the EMAIL_ENCRYPTION_KEY environment variable"
                 })?;
                 mailgun::run(&token, &encryption_key, &team_api, dry_run)?;
+            }
+            "discord" => {
+                let token = std::env::var("DISCORD_TOKEN")
+                    .with_context(|_| "failed to get the DISCORD_TOKEN environment variable")?;
+                let sync = SyncDiscord::new(token, &team_api, dry_run)?;
+                sync.run()?;
             }
             _ => panic!("unknown service: {}", service),
         }
