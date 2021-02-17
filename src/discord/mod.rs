@@ -7,7 +7,6 @@ use log::{info, warn};
 use std::collections::HashMap;
 
 const RUST_LANG_DISCORD: &str = "The Rust Programming Language";
-const TEST: &str = "Test";
 
 pub(crate) struct SyncDiscord {
     discord: Discord,
@@ -29,7 +28,7 @@ impl SyncDiscord {
     }
 
     pub(crate) fn run(&self) -> Result<(), Error> {
-        let guild = self.discord.get_guild(TEST)?;
+        let guild = self.discord.get_guild(RUST_LANG_DISCORD)?;
 
         let guild_id = guild.id;
 
