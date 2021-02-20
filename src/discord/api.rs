@@ -52,10 +52,12 @@ impl Discord {
         guild_id: &str,
     ) -> Result<Option<GuildMember>, Error> {
         let request = || {
-            Ok(self.req(
+            let f = self.req(
                 Method::GET,
                 &format!("/v8/guilds/{}/members/{}", guild_id, member_id),
-            )?)
+            )?;
+
+            Ok(f)
         };
 
         with_rate_limiting(request).map(|maybe_res| {

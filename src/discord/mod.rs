@@ -2,7 +2,7 @@ mod api;
 
 use self::api::Discord;
 use crate::TeamApi;
-use failure::{bail, Error};
+use failure::Error;
 use log::{info, warn};
 use std::collections::HashMap;
 
@@ -141,7 +141,7 @@ impl SyncDiscord {
             {
                 user_updates
                     .entry(user_id)
-                    .or_insert(vec![])
+                    .or_insert_with(Vec::new)
                     .push(UserUpdate::AddRole(*team_role_id));
             }
 
@@ -150,7 +150,7 @@ impl SyncDiscord {
             {
                 user_updates
                     .entry(user_id)
-                    .or_insert(vec![])
+                    .or_insert_with(Vec::new)
                     .push(UserUpdate::RemoveRole(*team_role_id));
             }
         }
@@ -179,7 +179,7 @@ impl SyncDiscord {
                 if color_code != role.color {
                     role_updates
                         .entry(discord_team.role_id)
-                        .or_insert(vec![])
+                        .or_insert_with(Vec::new)
                         .push(RoleUpdate::ChangeColor(color_code));
                 }
             }
