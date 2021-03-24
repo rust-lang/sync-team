@@ -94,13 +94,9 @@ impl SyncDiscord {
     fn get_users(&self, guild_id: &str) -> Result<HashMap<usize, api::GuildMember>, Error> {
         let mut users = HashMap::new();
 
-        let maybe_all = &self
-            .teams
-            .iter()
-            .find(|team| team.name == "all");
+        let maybe_all = &self.teams.iter().find(|team| team.name == "all");
 
-
-        let all = if let Some(all) = maybe_all { 
+        let all = if let Some(all) = maybe_all {
             all
         } else {
             return Ok(users);
@@ -166,7 +162,6 @@ impl SyncDiscord {
 
         for team in &self.teams {
             for discord_team in &team.discord {
-
                 let maybe_role = roles
                     .iter()
                     .find(|role| role.id == format!("{}", discord_team.role_id));
