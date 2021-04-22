@@ -6,8 +6,7 @@ use failure::Error;
 use log::{info, warn};
 use std::collections::HashMap;
 
-//const RUST_LANG_DISCORD: &str = "The Rust Programming Language";
-const RUST_LANG_DISCORD: &str = "Test";
+const RUST_LANG_DISCORD: &str = "The Rust Programming Language";
 
 pub(crate) struct SyncDiscord {
     discord: Discord,
