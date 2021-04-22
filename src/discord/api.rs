@@ -6,6 +6,7 @@ use reqwest::{
 };
 use serde_json::json;
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 pub(crate) struct Discord {
     token: String,
@@ -69,6 +70,13 @@ impl Discord {
         })
     }
 
+    pub(crate) fn get_roles(&self, guild_id: &str) -> Result<Vec<Role>, Error> {
+        Ok(self
+            .req(Method::GET, &format!("/v8/guilds/{}/roles", guild_id))?
+            .send()?
+            .json::<Vec<Role>>()?)
+    }
+
     pub(crate) fn update_user_roles(
         &self,
         guild_id: &str,
@@ -127,9 +135,6 @@ impl Discord {
 
 // Discord has [rate limits] on their REST api.
 //
-// When sending repeated requests to the same guild the rate limiting wait times can be longer than
-// a minute.
-//
 // [rate limits]: https://discord.com/developers/docs/topics/rate-limits
 fn with_rate_limiting<F>(f: F) -> Result<Option<Response>, Error>
 where
@@ -149,17 +154,15 @@ where
             403 => bail!("insufficient permissions"),
             404 => return Ok(None),
             429 => {
-                let future_moment = if let Some(header) = res.headers().get("x-ratelimit-reset") {
-                    f64::from_str(header.to_str()?)? as u64
-                } else {
-                    bail!("no x-ratelimit-reset header found in 429 response")
-                };
+                let future_moment =
+                    if let Some(header) = res.headers().get("x-ratelimit-reset-after") {
+                        f64::from_str(header.to_str()?)?
+                    } else {
+                        bail!("no x-ratelimit-reset header found in 429 response")
+                    };
 
-                let delay = (UNIX_EPOCH + Duration::from_secs(future_moment))
-                    .duration_since(SystemTime::now())?;
-
-                info!("rate limited: delaying for {} seconds", delay.as_secs());
-                thread::sleep(delay);
+                info!("rate limited: delaying for {} seconds", future_moment);
+                thread::sleep(Duration::from_secs_f64(future_moment));
             }
             c => bail!("unexpected status code: {}", c),
         }

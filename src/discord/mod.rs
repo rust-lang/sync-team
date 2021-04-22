@@ -2,7 +2,7 @@ mod api;
 
 use self::api::Discord;
 use crate::TeamApi;
-use failure::Error;
+use failure::{bail, Error};
 use log::{info, warn};
 use std::collections::HashMap;
 
@@ -33,18 +33,21 @@ impl SyncDiscord {
 
         let guild_id = guild.id;
 
+        info!("Fetching roles from discord...");
+        let guild_roles = self.discord.get_roles(&guild_id)?;
+
         info!("Fetching users from discord...");
         let mut users = self.get_users(&guild_id)?;
 
         info!("Computing user updates...");
         let mut user_updates = HashMap::new();
         for (user_id, user) in &users {
-            self.get_user_updates(*user_id, &mut user_updates, &user);
+            self.get_user_updates(*user_id, &mut user_updates, &user, &guild_roles)?;
         }
 
         info!("Computing role updates...");
         let mut roles = guild.roles;
-        let role_updates = self.get_role_updates(&roles)?;
+        let role_updates = self.get_role_updates(&roles, &guild_roles)?;
 
         if !self.dry_run {
             info!("Applying user updates...");
@@ -125,13 +128,23 @@ impl SyncDiscord {
         user_id: usize,
         user_updates: &mut HashMap<usize, Vec<UserUpdate>>,
         user: &api::GuildMember,
-    ) {
+        guild_roles: &Vec<api::Role>,
+    ) -> Result<(), Error> {
         let current_roles = &user.roles;
 
         for team in &self.teams {
             for discord_team in &team.discord {
                 let team_members = &discord_team.members;
-                let team_role_id = &discord_team.role_id;
+                let team_role_id = if let Some(role) = guild_roles
+                    .iter()
+                    .find(|guild_role| guild_role.name == discord_team.name)
+                {
+                    use std::str::FromStr;
+                    usize::from_str(&role.id)?
+                } else {
+                    warn!("Role not found in guild: {}", discord_team.name);
+                    continue;
+                };
 
                 if team_members.contains(&user_id)
                     && !current_roles.contains(&format!("{}", team_role_id))
@@ -139,7 +152,7 @@ impl SyncDiscord {
                     user_updates
                         .entry(user_id)
                         .or_insert_with(Vec::new)
-                        .push(UserUpdate::AddRole(*team_role_id));
+                        .push(UserUpdate::AddRole(team_role_id));
                 }
 
                 if current_roles.contains(&format!("{}", team_role_id))
@@ -148,30 +161,43 @@ impl SyncDiscord {
                     user_updates
                         .entry(user_id)
                         .or_insert_with(Vec::new)
-                        .push(UserUpdate::RemoveRole(*team_role_id));
+                        .push(UserUpdate::RemoveRole(team_role_id));
                 }
             }
         }
+
+        Ok(())
     }
 
     fn get_role_updates(
         &self,
         roles: &[api::Role],
+        guild_roles: &Vec<api::Role>,
     ) -> Result<HashMap<usize, Vec<RoleUpdate>>, Error> {
+        use std::str::FromStr;
+
         let mut role_updates = HashMap::new();
 
         for team in &self.teams {
             for discord_team in &team.discord {
-                let maybe_role = roles
+                let team_role_id = if let Some(role) = guild_roles
                     .iter()
-                    .find(|role| role.id == format!("{}", discord_team.role_id));
+                    .find(|guild_role| guild_role.name == discord_team.name)
+                {
+                    &role.id
+                } else {
+                    warn!("Role not found in guild: {}", discord_team.name);
+                    continue;
+                };
+
+                let maybe_role = roles.iter().find(|role| &role.id == team_role_id);
 
                 if let (Some(role), Some(color)) = (maybe_role, discord_team.color.as_ref()) {
                     let color_code = usize::from_str_radix(&color[1..], 16)?;
 
                     if color_code != role.color {
                         role_updates
-                            .entry(discord_team.role_id)
+                            .entry(usize::from_str(&team_role_id)?)
                             .or_insert_with(Vec::new)
                             .push(RoleUpdate::ChangeColor(color_code));
                     }
