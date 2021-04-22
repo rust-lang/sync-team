@@ -6,7 +6,6 @@ use reqwest::{
 };
 use serde_json::json;
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 pub(crate) struct Discord {
     token: String,
@@ -68,13 +67,6 @@ impl Discord {
                 None
             }
         })
-    }
-
-    pub(crate) fn get_roles(&self, guild_id: &str) -> Result<Vec<Role>, Error> {
-        Ok(self
-            .req(Method::GET, &format!("/v8/guilds/{}/roles", guild_id))?
-            .send()?
-            .json::<Vec<Role>>()?)
     }
 
     pub(crate) fn update_user_roles(
@@ -142,7 +134,7 @@ where
 {
     use std::str::FromStr;
     use std::thread;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::Duration;
 
     loop {
         let res = f()?.send()?;

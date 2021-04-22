@@ -2,7 +2,7 @@ mod api;
 
 use self::api::Discord;
 use crate::TeamApi;
-use failure::{bail, Error};
+use failure::Error;
 use log::{info, warn};
 use std::collections::HashMap;
 
@@ -23,8 +23,8 @@ impl SyncDiscord {
 
         Ok(Self {
             discord,
-            teams,
             dry_run,
+            teams,
         })
     }
 
@@ -33,21 +33,18 @@ impl SyncDiscord {
 
         let guild_id = guild.id;
 
-        info!("Fetching roles from discord...");
-        let guild_roles = self.discord.get_roles(&guild_id)?;
-
         info!("Fetching users from discord...");
         let mut users = self.get_users(&guild_id)?;
+
+        info!("Computing role updates...");
+        let mut roles = guild.roles;
+        let role_updates = self.get_role_updates(&roles)?;
 
         info!("Computing user updates...");
         let mut user_updates = HashMap::new();
         for (user_id, user) in &users {
-            self.get_user_updates(*user_id, &mut user_updates, &user, &guild_roles)?;
+            self.get_user_updates(*user_id, &mut user_updates, &user, &roles)?;
         }
-
-        info!("Computing role updates...");
-        let mut roles = guild.roles;
-        let role_updates = self.get_role_updates(&roles, &guild_roles)?;
 
         if !self.dry_run {
             info!("Applying user updates...");
@@ -128,7 +125,7 @@ impl SyncDiscord {
         user_id: usize,
         user_updates: &mut HashMap<usize, Vec<UserUpdate>>,
         user: &api::GuildMember,
-        guild_roles: &Vec<api::Role>,
+        guild_roles: &[api::Role],
     ) -> Result<(), Error> {
         let current_roles = &user.roles;
 
@@ -171,8 +168,7 @@ impl SyncDiscord {
 
     fn get_role_updates(
         &self,
-        roles: &[api::Role],
-        guild_roles: &Vec<api::Role>,
+        guild_roles: &[api::Role],
     ) -> Result<HashMap<usize, Vec<RoleUpdate>>, Error> {
         use std::str::FromStr;
 
@@ -180,24 +176,22 @@ impl SyncDiscord {
 
         for team in &self.teams {
             for discord_team in &team.discord {
-                let team_role_id = if let Some(role) = guild_roles
+                let role = if let Some(role) = guild_roles
                     .iter()
                     .find(|guild_role| guild_role.name == discord_team.name)
                 {
-                    &role.id
+                    role
                 } else {
                     warn!("Role not found in guild: {}", discord_team.name);
                     continue;
                 };
 
-                let maybe_role = roles.iter().find(|role| &role.id == team_role_id);
-
-                if let (Some(role), Some(color)) = (maybe_role, discord_team.color.as_ref()) {
+                if let Some(color) = discord_team.color.as_ref() {
                     let color_code = usize::from_str_radix(&color[1..], 16)?;
 
                     if color_code != role.color {
                         role_updates
-                            .entry(usize::from_str(&team_role_id)?)
+                            .entry(usize::from_str(&role.id)?)
                             .or_insert_with(Vec::new)
                             .push(RoleUpdate::ChangeColor(color_code));
                     }
