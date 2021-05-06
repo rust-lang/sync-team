@@ -25,7 +25,7 @@ impl SyncGitHub {
         let users = teams
             .iter()
             .filter_map(|t| t.github.as_ref().map(|gh| &gh.teams))
-            .flat_map(|teams| teams)
+            .flatten()
             .flat_map(|team| &team.members)
             .copied()
             .collect::<HashSet<_>>();

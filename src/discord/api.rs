@@ -103,6 +103,43 @@ impl Discord {
         Ok(())
     }
 
+    pub(crate) fn update_guild_role_positions(
+        &self,
+        guild_id: &str,
+        positions: &[RolePosition],
+    ) -> Result<(), Error> {
+        let request = || {
+            Ok(self
+                .req(Method::PATCH, &format!("/v8/guilds/{}/roles", guild_id))?
+                .json(&serde_json::to_value(&positions)?))
+        };
+        with_rate_limiting(request)?;
+        Ok(())
+    }
+
+    pub(crate) fn create_guild_role(
+        &self,
+        guild_id: &str,
+        name: &str,
+        color: usize,
+    ) -> Result<Role, Error> {
+        let request = || {
+            Ok(self
+                .req(Method::POST, &format!("/v8/guilds/{}/roles", guild_id))?
+                .json(&json!({
+                    "name": name,
+                    "color": color,
+                    "mentionable": true,
+                })))
+        };
+
+        if let Some(mut res) = with_rate_limiting(request)? {
+            Ok(res.json::<Role>()?)
+        } else {
+            bail!("an error occurred creating the role \"{}\"", name);
+        }
+    }
+
     fn req(&self, method: Method, url: &str) -> Result<RequestBuilder, Error> {
         let url = if url.starts_with("https://") {
             Cow::Borrowed(url)
@@ -173,6 +210,7 @@ pub(crate) struct Role {
     pub id: String,
     pub name: String,
     pub color: usize,
+    pub position: usize,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -184,4 +222,10 @@ pub(crate) struct GuildMember {
 #[derive(serde::Deserialize, Debug)]
 pub(crate) struct DiscordUser {
     id: String,
+}
+
+#[derive(serde::Serialize, Debug)]
+pub(crate) struct RolePosition {
+    pub id: String,
+    pub position: usize,
 }
