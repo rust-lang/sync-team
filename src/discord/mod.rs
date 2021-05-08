@@ -111,13 +111,13 @@ impl SyncDiscord {
 
             info!("Applying role updates...");
 
+            let mut positions = Vec::<api::RolePosition>::new();
+
             for (role_id, updates) in role_updates {
                 let mut role = guild_roles
                     .iter_mut()
                     .find(|role| role.id == role_id.to_string())
                     .unwrap();
-
-                let mut positions = Vec::<api::RolePosition>::new();
 
                 for update in updates {
                     match update {
@@ -135,11 +135,11 @@ impl SyncDiscord {
 
                 info!("Updating existing roles");
                 self.discord.update_guild_role(&guild_id, &role)?;
-                if !positions.is_empty() {
-                    info!("Updating role positions");
-                    self.discord
-                        .update_guild_role_positions(&guild_id, &positions)?;
-                }
+            }
+            if !positions.is_empty() {
+                info!("Updating role positions");
+                self.discord
+                    .update_guild_role_positions(&guild_id, &positions)?;
             }
         }
 
