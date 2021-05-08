@@ -51,11 +51,9 @@ impl SyncDiscord {
         }
 
         if !self.dry_run {
-            info!("Creating new roles...");
-
             for new_role in new_roles {
                 if !guild_roles.iter().any(|role| role.name == new_role.name) {
-                    info!("Adding new role: \"{}\"", new_role.name);
+                    info!("Adding new role: {}", new_role.name);
                     let role = self.discord.create_guild_role(
                         &guild_id,
                         &new_role.name,
@@ -84,8 +82,6 @@ impl SyncDiscord {
                 }
             }
 
-            info!("Applying user updates...");
-
             for (user_id, updates) in user_updates {
                 let user = if let Some(user) = users.get_mut(&user_id) {
                     user
@@ -109,20 +105,20 @@ impl SyncDiscord {
                 self.discord.update_user_roles(&guild_id, user_id, roles)?;
             }
 
-            info!("Applying role updates...");
-
             let mut positions = Vec::<api::RolePosition>::new();
 
             for (role_id, updates) in role_updates {
-                let mut role = guild_roles
-                    .iter_mut()
+                let role = guild_roles
+                    .iter()
                     .find(|role| role.id == role_id.to_string())
                     .unwrap();
+
+                let mut role_copy = role.clone();
 
                 for update in updates {
                     match update {
                         RoleUpdate::ChangeColor(color) => {
-                            role.color = color;
+                            role_copy.color = color;
                         }
                         RoleUpdate::ChangePosition(position) => {
                             positions.push(api::RolePosition {
@@ -131,11 +127,14 @@ impl SyncDiscord {
                             });
                         }
                     }
-                }
 
-                info!("Updating existing roles");
-                self.discord.update_guild_role(&guild_id, &role)?;
+                    if *role != role_copy {
+                        info!("Updating existing role: {}", &role.name);
+                        self.discord.update_guild_role(&guild_id, &role)?;
+                    }
+                }
             }
+
             if !positions.is_empty() {
                 info!("Updating role positions");
                 self.discord

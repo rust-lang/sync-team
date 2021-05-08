@@ -205,7 +205,7 @@ pub(crate) struct Guild {
     pub roles: Vec<Role>,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, PartialEq, Debug, Clone)]
 pub(crate) struct Role {
     pub id: String,
     pub name: String,
