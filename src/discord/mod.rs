@@ -76,9 +76,6 @@ impl SyncDiscord {
                             .or_insert_with(Vec::new)
                             .push(UserUpdate::AddRole(role_id));
                     }
-                } else {
-                    info!("A role with the name \"{}\" already exists", new_role.name);
-                    continue;
                 }
             }
 
