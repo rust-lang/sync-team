@@ -23,6 +23,7 @@ fn usage() {
     eprintln!("  --only-print-plan   Print the execution plan without executing it");
     eprintln!("environment variables:");
     eprintln!("  GITHUB_TOKEN          Authentication token with GitHub");
+    eprintln!("  GITHUB_IGNORED_ORGS   Space-separated list of orgs not to synchronize");
     eprintln!("  MAILGUN_API_TOKEN     Authentication token with Mailgun");
     eprintln!("  EMAIL_ENCRYPTION_KEY  Key used to decrypt encrypted emails in the team repo");
     eprintln!("  ZULIP_USERNAME        Username of the Zulip bot");
@@ -79,8 +80,16 @@ fn app() -> anyhow::Result<()> {
         info!("synchronizing {}", service);
         match service.as_str() {
             "github" => {
+                let ignored_orgs_tmp;
+                let ignored_orgs = if let Ok(orgs) = get_env("GITHUB_IGNORED_ORGS") {
+                    ignored_orgs_tmp = orgs;
+                    ignored_orgs_tmp.split(' ').collect::<Vec<_>>()
+                } else {
+                    Vec::new()
+                };
+
                 let token = get_env("GITHUB_TOKEN")?;
-                let sync = SyncGitHub::new(token, &team_api, dry_run)?;
+                let sync = SyncGitHub::new(token, &team_api, &ignored_orgs, dry_run)?;
                 let diff = sync.diff_all()?;
                 info!("{}", diff);
                 if !only_print_plan {

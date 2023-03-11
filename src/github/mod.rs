@@ -19,10 +19,24 @@ pub(crate) struct SyncGitHub {
 }
 
 impl SyncGitHub {
-    pub(crate) fn new(token: String, team_api: &TeamApi, dry_run: bool) -> anyhow::Result<Self> {
+    pub(crate) fn new(
+        token: String,
+        team_api: &TeamApi,
+        ignore_orgs: &[&str],
+        dry_run: bool,
+    ) -> anyhow::Result<Self> {
         let github = GitHub::new(token, dry_run);
-        let teams = team_api.get_teams()?;
-        let repos = team_api.get_repos()?;
+
+        // Filter out teams and repositories in ignored organizations.
+        let mut teams = team_api.get_teams()?;
+        for team in &mut teams {
+            let Some(github_teams) = &mut team.github else { continue };
+            github_teams
+                .teams
+                .retain(|team| !ignore_orgs.contains(&&*team.org));
+        }
+        let mut repos = team_api.get_repos()?;
+        repos.retain(|repo| !ignore_orgs.contains(&&*repo.org));
 
         debug!("caching mapping between user ids and usernames");
         let users = teams
