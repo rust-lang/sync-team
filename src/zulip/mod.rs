@@ -1,4 +1,4 @@
-mod api;
+pub(crate) mod api;
 
 use crate::team_api::TeamApi;
 use api::{ZulipApi, ZulipUserGroup};

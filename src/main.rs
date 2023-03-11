@@ -1,8 +1,10 @@
+mod confirmation;
 mod github;
 mod mailgun;
 mod team_api;
 mod zulip;
 
+use crate::confirmation::Confirmation;
 use crate::github::SyncGitHub;
 use crate::team_api::TeamApi;
 use anyhow::Context;
@@ -17,23 +19,31 @@ fn usage() {
         eprintln!("  {service}");
     }
     eprintln!("available flags:");
-    eprintln!("  --help              Show this help message");
-    eprintln!("  --live              Apply the proposed changes to the services");
-    eprintln!("  --team-repo <path>  Path to the local team repo to use");
-    eprintln!("  --only-print-plan   Print the execution plan without executing it");
+    eprintln!("  --help                   Show this help message");
+    eprintln!("  --live                   Apply the proposed changes to the services");
+    eprintln!("  --team-repo <path>       Path to the local team repo to use");
+    eprintln!("  --only-print-plan        Print the execution plan without executing it");
+    eprintln!("  --require-confirmation   Require external confirmation before applying changes");
     eprintln!("environment variables:");
     eprintln!("  GITHUB_TOKEN          Authentication token with GitHub");
     eprintln!("  GITHUB_IGNORED_ORGS   Space-separated list of orgs not to synchronize");
     eprintln!("  MAILGUN_API_TOKEN     Authentication token with Mailgun");
     eprintln!("  EMAIL_ENCRYPTION_KEY  Key used to decrypt encrypted emails in the team repo");
     eprintln!("  ZULIP_USERNAME        Username of the Zulip bot");
-    eprintln!("  ZULIP_API_TOKEN       Autnentication token of the Zulip bot");
+    eprintln!("  ZULIP_API_TOKEN       Authentication token of the Zulip bot");
+    eprintln!("require-confirmation environment variables:");
+    eprintln!("  CONFIRMATION_STREAM          Zulip stream to post confirmation messages on");
+    eprintln!("  CONFIRMATION_TOPIC           Zulip topic to post confirmation messages on");
+    eprintln!("  CONFIRMATION_BASE_URL        Base URL to the endpoint verifying the confirmation");
+    eprintln!("  CONFIRMATION_APPROVED_HASH   Approved hash to apply");
+    eprintln!("  CONFIRMATION_APPROVER        Identifier of the person approving the change");
 }
 
 fn app() -> anyhow::Result<()> {
     let mut dry_run = true;
     let mut next_team_repo = false;
     let mut only_print_plan = false;
+    let mut require_confirmation = false;
     let mut team_repo = None;
     let mut services = Vec::new();
     for arg in std::env::args().skip(1) {
@@ -50,6 +60,7 @@ fn app() -> anyhow::Result<()> {
                 return Ok(());
             }
             "--only-print-plan" => only_print_plan = true,
+            "--require-confirmation" => require_confirmation = true,
             service if AVAILABLE_SERVICES.contains(&service) => services.push(service.to_string()),
             _ => {
                 eprintln!("unknown argument: {arg}");
@@ -57,6 +68,9 @@ fn app() -> anyhow::Result<()> {
                 std::process::exit(1);
             }
         }
+    }
+    if only_print_plan && require_confirmation {
+        anyhow::bail!("you can only set one of --only-print-plan or --require-confirmation");
     }
 
     let team_api = team_repo
@@ -76,6 +90,7 @@ fn app() -> anyhow::Result<()> {
         warn!("run the binary with the --live flag to apply the changes.");
     }
 
+    let mut diffs = Vec::new();
     for service in services {
         info!("synchronizing {}", service);
         match service.as_str() {
@@ -90,11 +105,10 @@ fn app() -> anyhow::Result<()> {
 
                 let token = get_env("GITHUB_TOKEN")?;
                 let sync = SyncGitHub::new(token, &team_api, &ignored_orgs, dry_run)?;
-                let diff = sync.diff_all()?;
-                info!("{}", diff);
-                if !only_print_plan {
-                    diff.apply(&sync)?;
-                }
+                diffs.push(ServiceDiff::GitHub {
+                    diff: sync.diff_all()?,
+                    sync,
+                });
             }
             "mailgun" => {
                 let token = get_env("MAILGUN_API_TOKEN")?;
@@ -110,7 +124,41 @@ fn app() -> anyhow::Result<()> {
         }
     }
 
+    for diff in &diffs {
+        match diff {
+            ServiceDiff::GitHub { diff, .. } => {
+                info!("GitHub diff:\n{diff}");
+            }
+        }
+    }
+
+    if only_print_plan {
+        // Nothing
+    } else if require_confirmation {
+        Confirmation::new(diffs)?.run()?;
+    } else {
+        run_diffs(diffs)?;
+    }
+
     Ok(())
+}
+
+fn run_diffs(diffs: Vec<ServiceDiff>) -> anyhow::Result<()> {
+    for diff in diffs {
+        match diff {
+            ServiceDiff::GitHub { sync, diff } => diff.apply(&sync)?,
+        }
+    }
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+enum ServiceDiff {
+    GitHub {
+        #[serde(skip)]
+        sync: SyncGitHub,
+        diff: github::Diff,
+    },
 }
 
 fn get_env(key: &str) -> anyhow::Result<String> {
