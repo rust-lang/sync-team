@@ -25,6 +25,18 @@ impl ZulipApi {
         }
     }
 
+    pub(crate) fn post_message(&self, stream: &str, topic: &str, body: &str) -> anyhow::Result<()> {
+        let mut form = HashMap::new();
+        form.insert("type", "stream");
+        form.insert("to", stream);
+        form.insert("topic", topic);
+        form.insert("content", body);
+
+        let resp = self.req(reqwest::Method::POST, "/messages", Some(form))?;
+        resp.error_for_status()?;
+        Ok(())
+    }
+
     /// Creates a Zulip user group with the supplied name, description, and members
     ///
     /// This is a noop if the user group already exists.

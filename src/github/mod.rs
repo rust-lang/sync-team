@@ -19,10 +19,24 @@ pub(crate) struct SyncGitHub {
 }
 
 impl SyncGitHub {
-    pub(crate) fn new(token: String, team_api: &TeamApi, dry_run: bool) -> anyhow::Result<Self> {
+    pub(crate) fn new(
+        token: String,
+        team_api: &TeamApi,
+        ignore_orgs: &[&str],
+        dry_run: bool,
+    ) -> anyhow::Result<Self> {
         let github = GitHub::new(token, dry_run);
-        let teams = team_api.get_teams()?;
-        let repos = team_api.get_repos()?;
+
+        // Filter out teams and repositories in ignored organizations.
+        let mut teams = team_api.get_teams()?;
+        for team in &mut teams {
+            let Some(github_teams) = &mut team.github else { continue };
+            github_teams
+                .teams
+                .retain(|team| !ignore_orgs.contains(&&*team.org));
+        }
+        let mut repos = team_api.get_repos()?;
+        repos.retain(|repo| !ignore_orgs.contains(&&*repo.org));
 
         debug!("caching mapping between user ids and usernames");
         let users = teams
@@ -470,6 +484,7 @@ fn construct_branch_protection(
 const BOTS_TEAMS: &[&str] = &["bors", "highfive", "rfcbot", "bots"];
 
 /// A diff between the team repo and the state on GitHub
+#[derive(serde::Serialize)]
 pub(crate) struct Diff {
     team_diffs: Vec<TeamDiff>,
     repo_diffs: Vec<RepoDiff>,
@@ -503,6 +518,7 @@ impl std::fmt::Display for Diff {
     }
 }
 
+#[derive(serde::Serialize)]
 enum RepoDiff {
     Create(CreateRepoDiff),
     Update(UpdateRepoDiff),
@@ -526,6 +542,7 @@ impl std::fmt::Display for RepoDiff {
     }
 }
 
+#[derive(serde::Serialize)]
 struct CreateRepoDiff {
     org: String,
     name: String,
@@ -574,6 +591,7 @@ impl std::fmt::Display for CreateRepoDiff {
     }
 }
 
+#[derive(serde::Serialize)]
 struct UpdateRepoDiff {
     org: String,
     name: String,
@@ -631,6 +649,7 @@ impl std::fmt::Display for UpdateRepoDiff {
     }
 }
 
+#[derive(serde::Serialize)]
 struct RepoPermissionAssignmentDiff {
     collaborator: RepoCollaborator,
     diff: RepoPermissionDiff,
@@ -682,18 +701,20 @@ impl std::fmt::Display for RepoPermissionAssignmentDiff {
     }
 }
 
+#[derive(serde::Serialize)]
 enum RepoPermissionDiff {
     Create(RepoPermission),
     Update(RepoPermission, RepoPermission),
     Delete(RepoPermission),
 }
 
-#[derive(Clone)]
+#[derive(serde::Serialize, Clone)]
 enum RepoCollaborator {
     Team(String),
     User(String),
 }
 
+#[derive(serde::Serialize)]
 struct BranchProtectionDiff {
     pattern: String,
     operation: BranchProtectionDiffOperation,
@@ -778,12 +799,14 @@ fn log_branch_protection(
     Ok(())
 }
 
+#[derive(serde::Serialize)]
 enum BranchProtectionDiffOperation {
     Create(api::BranchProtection),
     Update(String, api::BranchProtection, api::BranchProtection),
     Delete(String),
 }
 
+#[derive(serde::Serialize)]
 enum TeamDiff {
     Create(CreateTeamDiff),
     Edit(EditTeamDiff),
@@ -812,6 +835,7 @@ impl std::fmt::Display for TeamDiff {
     }
 }
 
+#[derive(serde::Serialize)]
 struct CreateTeamDiff {
     org: String,
     name: String,
@@ -854,6 +878,7 @@ impl std::fmt::Display for CreateTeamDiff {
     }
 }
 
+#[derive(serde::Serialize)]
 struct EditTeamDiff {
     org: String,
     name: String,
@@ -930,6 +955,7 @@ impl std::fmt::Display for EditTeamDiff {
     }
 }
 
+#[derive(serde::Serialize)]
 enum MemberDiff {
     Create(TeamRole),
     ChangeRole((TeamRole, TeamRole)),
@@ -955,6 +981,7 @@ impl MemberDiff {
     }
 }
 
+#[derive(serde::Serialize)]
 struct DeleteTeamDiff {
     org: String,
     name: String,

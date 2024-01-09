@@ -996,7 +996,7 @@ fn team_node_id(id: usize) -> String {
     base64::encode(format!("04:Team{id}"))
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BranchProtection {
     pub(crate) pattern: String,
