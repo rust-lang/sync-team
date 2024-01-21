@@ -252,7 +252,7 @@ impl TeamDataBuilder {
 pub struct RepoData {
     name: String,
     #[builder(default)]
-    description: Option<String>,
+    pub description: Option<String>,
     #[builder(default)]
     bots: Vec<Bot>,
     #[builder(default)]

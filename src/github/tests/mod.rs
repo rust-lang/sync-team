@@ -209,6 +209,37 @@ fn repo_noop() {
 }
 
 #[test]
+fn repo_change_description() {
+    let mut model = DataModel::default();
+    model.create_repo(RepoData::new("repo1").description(Some("foo".to_string())));
+    let gh = model.gh_model();
+    model.get_repo("repo1").description = Some("bar".to_string());
+
+    let diff = model.diff_repos(gh);
+    insta::assert_debug_snapshot!(diff, @r###"
+    [
+        Update(
+            UpdateRepoDiff {
+                org: "rust-lang",
+                name: "repo1",
+                repo_id: "0",
+                description_diff: Some(
+                    (
+                        Some(
+                            "foo",
+                        ),
+                        "bar",
+                    ),
+                ),
+                permission_diffs: [],
+                branch_protection_diffs: [],
+            },
+        ),
+    ]
+    "###);
+}
+
+#[test]
 fn repo_create() {
     let mut model = DataModel::default();
     let gh = model.gh_model();
