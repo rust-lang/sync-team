@@ -104,6 +104,7 @@ impl DataModel {
 
         let mut repos = HashMap::default();
         let mut repo_members: HashMap<String, (Vec<RepoTeam>, Vec<RepoUser>)> = HashMap::default();
+        let mut branch_protections = HashMap::new();
 
         for repo in &self.repos {
             repos.insert(
@@ -145,6 +146,22 @@ impl DataModel {
                 })
                 .collect();
             repo_members.insert(repo.name.clone(), (teams, members));
+
+            let mut protections = vec![];
+            for protection in &repo.branch_protections {
+                protections.push((
+                    format!("{}", protections.len()),
+                    BranchProtection {
+                        pattern: protection.pattern.clone(),
+                        is_admin_enforced: true,
+                        dismisses_stale_reviews: protection.dismiss_stale_review,
+                        required_approving_review_count: protection.required_approvals as u8,
+                        required_status_check_contexts: protection.ci_checks.clone(),
+                        push_allowances: vec![],
+                    },
+                ));
+            }
+            branch_protections.insert(repo.name.clone(), protections);
         }
 
         GithubMock {
@@ -155,6 +172,7 @@ impl DataModel {
             team_invitations: Default::default(),
             repos,
             repo_members,
+            branch_protections,
         }
     }
 
@@ -257,6 +275,8 @@ pub struct RepoData {
     pub teams: Vec<v1::RepoTeam>,
     #[builder(default)]
     pub members: Vec<v1::RepoMember>,
+    #[builder(default)]
+    pub branch_protections: Vec<v1::BranchProtection>,
 }
 
 impl RepoData {
@@ -285,6 +305,7 @@ impl RepoData {
             bots,
             teams,
             members,
+            branch_protections,
         } = self.clone();
         v1::Repo {
             org: DEFAULT_ORG.to_string(),
@@ -294,7 +315,7 @@ impl RepoData {
             bots,
             teams: teams.clone(),
             members: members.clone(),
-            branch_protections: vec![],
+            branch_protections,
         }
     }
 }
@@ -337,6 +358,8 @@ pub struct GithubMock {
     repos: HashMap<String, Repo>,
     // Repo name -> (teams, members)
     repo_members: HashMap<String, (Vec<RepoTeam>, Vec<RepoUser>)>,
+    // Repo name -> Vec<(protection ID, branch protection)>
+    branch_protections: HashMap<String, Vec<(String, BranchProtection)>>,
 }
 
 impl GithubMock {
@@ -433,9 +456,18 @@ impl GithubRead for GithubMock {
     fn branch_protections(
         &self,
         org: &str,
-        _repo: &str,
+        repo: &str,
     ) -> anyhow::Result<HashMap<String, (String, BranchProtection)>> {
         assert_eq!(org, DEFAULT_ORG);
-        Ok(HashMap::default())
+
+        let Some(protections) = self.branch_protections.get(repo) else {
+            return Ok(Default::default());
+        };
+        let mut result = HashMap::default();
+        for (id, protection) in protections {
+            result.insert(protection.pattern.clone(), (id.clone(), protection.clone()));
+        }
+
+        Ok(result)
     }
 }
