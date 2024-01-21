@@ -211,9 +211,9 @@ fn repo_noop() {
 #[test]
 fn repo_change_description() {
     let mut model = DataModel::default();
-    model.create_repo(RepoData::new("repo1").description(Some("foo".to_string())));
+    model.create_repo(RepoData::new("repo1").description("foo".to_string()));
     let gh = model.gh_model();
-    model.get_repo("repo1").description = Some("bar".to_string());
+    model.get_repo("repo1").description = "bar".to_string();
 
     let diff = model.diff_repos(gh);
     insta::assert_debug_snapshot!(diff, @r###"
@@ -223,13 +223,19 @@ fn repo_change_description() {
                 org: "rust-lang",
                 name: "repo1",
                 repo_id: "0",
-                description_diff: Some(
-                    (
-                        Some(
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
                             "foo",
                         ),
-                        "bar",
-                    ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "bar",
+                        ),
+                        homepage: None,
+                    },
                 ),
                 permission_diffs: [],
                 branch_protection_diffs: [],
@@ -246,7 +252,7 @@ fn repo_create() {
 
     model.create_repo(
         RepoData::new("repo1")
-            .description(Some("foo".to_string()))
+            .description("foo".to_string())
             .member("user1", RepoPermission::Write)
             .team("team1", RepoPermission::Triage),
     );
@@ -289,7 +295,6 @@ fn repo_add_member() {
     let mut model = DataModel::default();
     model.create_repo(
         RepoData::new("repo1")
-            .description(Some("foo".to_string()))
             .member("user1", RepoPermission::Write)
             .team("team1", RepoPermission::Triage),
     );
@@ -310,13 +315,13 @@ fn repo_add_member() {
                 settings_diff: (
                     RepoSettings {
                         description: Some(
-                            "foo",
+                            "",
                         ),
                         homepage: None,
                     },
                     RepoSettings {
                         description: Some(
-                            "foo",
+                            "",
                         ),
                         homepage: None,
                     },
@@ -341,11 +346,7 @@ fn repo_add_member() {
 #[test]
 fn repo_change_member_permissions() {
     let mut model = DataModel::default();
-    model.create_repo(
-        RepoData::new("repo1")
-            .description(Some("foo".to_string()))
-            .member("user1", RepoPermission::Write),
-    );
+    model.create_repo(RepoData::new("repo1").member("user1", RepoPermission::Write));
 
     let gh = model.gh_model();
     model
@@ -366,13 +367,13 @@ fn repo_change_member_permissions() {
                 settings_diff: (
                     RepoSettings {
                         description: Some(
-                            "foo",
+                            "",
                         ),
                         homepage: None,
                     },
                     RepoSettings {
                         description: Some(
-                            "foo",
+                            "",
                         ),
                         homepage: None,
                     },
@@ -398,11 +399,7 @@ fn repo_change_member_permissions() {
 #[test]
 fn repo_remove_member() {
     let mut model = DataModel::default();
-    model.create_repo(
-        RepoData::new("repo1")
-            .description(Some("foo".to_string()))
-            .member("user1", RepoPermission::Write),
-    );
+    model.create_repo(RepoData::new("repo1").member("user1", RepoPermission::Write));
 
     let gh = model.gh_model();
     model.get_repo("repo1").members.clear();
@@ -418,13 +415,13 @@ fn repo_remove_member() {
                 settings_diff: (
                     RepoSettings {
                         description: Some(
-                            "foo",
+                            "",
                         ),
                         homepage: None,
                     },
                     RepoSettings {
                         description: Some(
-                            "foo",
+                            "",
                         ),
                         homepage: None,
                     },
