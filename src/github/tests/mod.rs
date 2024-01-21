@@ -1,4 +1,5 @@
-use crate::github::tests::test_utils::{DataModel, TeamData};
+use crate::github::tests::test_utils::{DataModel, RepoData, TeamData};
+use rust_team_data::v1::RepoPermission;
 
 mod test_utils;
 
@@ -193,6 +194,221 @@ fn team_delete() {
                 org: "rust-lang",
                 name: "users-gh",
                 slug: "users-gh",
+            },
+        ),
+    ]
+    "###);
+}
+
+#[test]
+fn repo_noop() {
+    let model = DataModel::default();
+    let gh = model.gh_model();
+    let diff = model.diff_repos(gh);
+    assert!(diff.is_empty());
+}
+
+#[test]
+fn repo_create() {
+    let mut model = DataModel::default();
+    let gh = model.gh_model();
+
+    model.create_repo(
+        RepoData::new("repo1")
+            .description(Some("foo".to_string()))
+            .member("user1", RepoPermission::Write)
+            .team("team1", RepoPermission::Triage),
+    );
+    let diff = model.diff_repos(gh);
+    insta::assert_debug_snapshot!(diff, @r###"
+    [
+        Create(
+            CreateRepoDiff {
+                org: "rust-lang",
+                name: "repo1",
+                description: "foo",
+                homepage: None,
+                permissions: [
+                    RepoPermissionAssignmentDiff {
+                        collaborator: Team(
+                            "team1",
+                        ),
+                        diff: Create(
+                            Triage,
+                        ),
+                    },
+                    RepoPermissionAssignmentDiff {
+                        collaborator: User(
+                            "user1",
+                        ),
+                        diff: Create(
+                            Write,
+                        ),
+                    },
+                ],
+                branch_protections: [],
+            },
+        ),
+    ]
+    "###);
+}
+
+#[test]
+fn repo_add_member() {
+    let mut model = DataModel::default();
+    model.create_repo(
+        RepoData::new("repo1")
+            .description(Some("foo".to_string()))
+            .member("user1", RepoPermission::Write)
+            .team("team1", RepoPermission::Triage),
+    );
+
+    let gh = model.gh_model();
+    model
+        .get_repo("repo1")
+        .add_member("user2", RepoPermission::Admin);
+
+    let diff = model.diff_repos(gh);
+    insta::assert_debug_snapshot!(diff, @r###"
+    [
+        Update(
+            UpdateRepoDiff {
+                org: "rust-lang",
+                name: "repo1",
+                repo_id: "0",
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "foo",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "foo",
+                        ),
+                        homepage: None,
+                    },
+                ),
+                permission_diffs: [
+                    RepoPermissionAssignmentDiff {
+                        collaborator: User(
+                            "user2",
+                        ),
+                        diff: Create(
+                            Admin,
+                        ),
+                    },
+                ],
+                branch_protection_diffs: [],
+            },
+        ),
+    ]
+    "###);
+}
+
+#[test]
+fn repo_change_member_permissions() {
+    let mut model = DataModel::default();
+    model.create_repo(
+        RepoData::new("repo1")
+            .description(Some("foo".to_string()))
+            .member("user1", RepoPermission::Write),
+    );
+
+    let gh = model.gh_model();
+    model
+        .get_repo("repo1")
+        .members
+        .last_mut()
+        .unwrap()
+        .permission = RepoPermission::Triage;
+
+    let diff = model.diff_repos(gh);
+    insta::assert_debug_snapshot!(diff, @r###"
+    [
+        Update(
+            UpdateRepoDiff {
+                org: "rust-lang",
+                name: "repo1",
+                repo_id: "0",
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "foo",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "foo",
+                        ),
+                        homepage: None,
+                    },
+                ),
+                permission_diffs: [
+                    RepoPermissionAssignmentDiff {
+                        collaborator: User(
+                            "user1",
+                        ),
+                        diff: Update(
+                            Write,
+                            Triage,
+                        ),
+                    },
+                ],
+                branch_protection_diffs: [],
+            },
+        ),
+    ]
+    "###);
+}
+
+#[test]
+fn repo_remove_member() {
+    let mut model = DataModel::default();
+    model.create_repo(
+        RepoData::new("repo1")
+            .description(Some("foo".to_string()))
+            .member("user1", RepoPermission::Write),
+    );
+
+    let gh = model.gh_model();
+    model.get_repo("repo1").members.clear();
+
+    let diff = model.diff_repos(gh);
+    insta::assert_debug_snapshot!(diff, @r###"
+    [
+        Update(
+            UpdateRepoDiff {
+                org: "rust-lang",
+                name: "repo1",
+                repo_id: "0",
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "foo",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "foo",
+                        ),
+                        homepage: None,
+                    },
+                ),
+                permission_diffs: [
+                    RepoPermissionAssignmentDiff {
+                        collaborator: User(
+                            "user1",
+                        ),
+                        diff: Delete(
+                            Write,
+                        ),
+                    },
+                ],
+                branch_protection_diffs: [],
             },
         ),
     ]
