@@ -247,6 +247,47 @@ fn repo_change_description() {
 }
 
 #[test]
+fn repo_change_homepage() {
+    let mut model = DataModel::default();
+    model.create_repo(RepoData::new("repo1").homepage(Some("https://foo.rs".to_string())));
+    let gh = model.gh_model();
+    model.get_repo("repo1").homepage = Some("https://bar.rs".to_string());
+
+    let diff = model.diff_repos(gh);
+    insta::assert_debug_snapshot!(diff, @r###"
+    [
+        Update(
+            UpdateRepoDiff {
+                org: "rust-lang",
+                name: "repo1",
+                repo_id: "0",
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: Some(
+                            "https://foo.rs",
+                        ),
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: Some(
+                            "https://bar.rs",
+                        ),
+                    },
+                ),
+                permission_diffs: [],
+                branch_protection_diffs: [],
+            },
+        ),
+    ]
+    "###);
+}
+
+#[test]
 fn repo_create() {
     let mut model = DataModel::default();
     let gh = model.gh_model();
@@ -483,7 +524,20 @@ fn repo_add_team() {
                 org: "rust-lang",
                 name: "repo1",
                 repo_id: "0",
-                description_diff: None,
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                ),
                 permission_diffs: [
                     RepoPermissionAssignmentDiff {
                         collaborator: Team(
@@ -517,7 +571,20 @@ fn repo_change_team_permissions() {
                 org: "rust-lang",
                 name: "repo1",
                 repo_id: "0",
-                description_diff: None,
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                ),
                 permission_diffs: [
                     RepoPermissionAssignmentDiff {
                         collaborator: Team(
@@ -552,7 +619,20 @@ fn repo_remove_team() {
                 org: "rust-lang",
                 name: "repo1",
                 repo_id: "0",
-                description_diff: None,
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                ),
                 permission_diffs: [
                     RepoPermissionAssignmentDiff {
                         collaborator: Team(
@@ -595,7 +675,20 @@ fn repo_add_branch_protection() {
                 org: "rust-lang",
                 name: "repo1",
                 repo_id: "0",
-                description_diff: None,
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                ),
                 permission_diffs: [],
                 branch_protection_diffs: [
                     BranchProtectionDiff {
@@ -653,7 +746,20 @@ fn repo_update_branch_protection() {
                 org: "rust-lang",
                 name: "repo1",
                 repo_id: "0",
-                description_diff: None,
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                ),
                 permission_diffs: [],
                 branch_protection_diffs: [
                     BranchProtectionDiff {
@@ -725,7 +831,20 @@ fn repo_remove_branch_protection() {
                 org: "rust-lang",
                 name: "repo1",
                 repo_id: "0",
-                description_diff: None,
+                settings_diff: (
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                    RepoSettings {
+                        description: Some(
+                            "",
+                        ),
+                        homepage: None,
+                    },
+                ),
                 permission_diffs: [],
                 branch_protection_diffs: [
                     BranchProtectionDiff {
