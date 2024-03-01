@@ -219,12 +219,14 @@ impl GitHubWrite {
             description: &'a str,
             homepage: &'a Option<String>,
             auto_init: bool,
+            delete_branch_on_merge: bool,
         }
         let req = &Req {
             name,
             description,
             homepage,
             auto_init: true,
+            delete_branch_on_merge: true,
         };
         debug!("Creating the repo {org}/{name} with {req:?}");
         if self.dry_run {
@@ -254,10 +256,12 @@ impl GitHubWrite {
         struct Req<'a> {
             description: &'a Option<String>,
             homepage: &'a Option<String>,
+            delete_branch_on_merge: bool,
         }
         let req = Req {
             description,
             homepage,
+            delete_branch_on_merge: true,
         };
         debug!("Editing repo {}/{} with {:?}", org, repo_name, req);
         if !self.dry_run {
