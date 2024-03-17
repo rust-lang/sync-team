@@ -209,13 +209,13 @@ pub(crate) struct Team {
     pub(crate) slug: String,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug, Clone)]
 pub(crate) struct RepoTeam {
     pub(crate) name: String,
     pub(crate) permission: RepoPermission,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub(crate) struct RepoUser {
     #[serde(alias = "login")]
     pub(crate) name: String,
@@ -248,7 +248,7 @@ impl fmt::Display for RepoPermission {
     }
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug, Clone)]
 pub(crate) struct Repo {
     #[serde(rename = "node_id")]
     pub(crate) id: String,
@@ -378,7 +378,7 @@ pub(crate) enum BranchProtectionOp {
     UpdateBranchProtection(String),
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub(crate) struct RepoSettings {
     pub description: Option<String>,
     pub homepage: Option<String>,
