@@ -115,6 +115,8 @@ impl DataModel {
                     org: DEFAULT_ORG.to_string(),
                     description: Some(repo.description.clone()),
                     homepage: repo.homepage.clone(),
+                    archived: false,
+                    allow_auto_merge: None,
                 },
             );
             let teams = repo
@@ -279,6 +281,10 @@ pub struct RepoData {
     pub members: Vec<v1::RepoMember>,
     #[builder(default)]
     pub branch_protections: Vec<v1::BranchProtection>,
+    #[builder(default)]
+    archived: bool,
+    #[builder(default)]
+    allow_auto_merge: bool,
 }
 
 impl RepoData {
@@ -309,6 +315,8 @@ impl RepoData {
             teams,
             members,
             branch_protections,
+            archived,
+            allow_auto_merge,
         } = self.clone();
         v1::Repo {
             org: DEFAULT_ORG.to_string(),
@@ -319,6 +327,8 @@ impl RepoData {
             teams: teams.clone(),
             members: members.clone(),
             branch_protections,
+            archived,
+            auto_merge_enabled: allow_auto_merge,
         }
     }
 }

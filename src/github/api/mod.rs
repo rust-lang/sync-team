@@ -378,7 +378,7 @@ pub(crate) enum BranchProtectionOp {
     UpdateBranchProtection(String),
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub(crate) struct RepoSettings {
     pub description: Option<String>,
     pub homepage: Option<String>,

@@ -230,12 +230,16 @@ fn repo_change_description() {
                             "foo",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "bar",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [],
@@ -269,6 +273,8 @@ fn repo_change_homepage() {
                         homepage: Some(
                             "https://foo.rs",
                         ),
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
@@ -277,6 +283,8 @@ fn repo_change_homepage() {
                         homepage: Some(
                             "https://bar.rs",
                         ),
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [],
@@ -312,8 +320,14 @@ fn repo_create() {
             CreateRepoDiff {
                 org: "rust-lang",
                 name: "repo1",
-                description: "foo",
-                homepage: None,
+                settings: RepoSettings {
+                    description: Some(
+                        "foo",
+                    ),
+                    homepage: None,
+                    archived: false,
+                    auto_merge_enabled: false,
+                },
                 permissions: [
                     RepoPermissionAssignmentDiff {
                         collaborator: Team(
@@ -381,12 +395,16 @@ fn repo_add_member() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [
@@ -433,12 +451,16 @@ fn repo_change_member_permissions() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [
@@ -481,12 +503,16 @@ fn repo_remove_member() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [
@@ -530,12 +556,16 @@ fn repo_add_team() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [
@@ -577,12 +607,16 @@ fn repo_change_team_permissions() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [
@@ -625,12 +659,16 @@ fn repo_remove_team() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [
@@ -681,12 +719,16 @@ fn repo_add_branch_protection() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [],
@@ -752,12 +794,16 @@ fn repo_update_branch_protection() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [],
@@ -837,12 +883,16 @@ fn repo_remove_branch_protection() {
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                     RepoSettings {
                         description: Some(
                             "",
                         ),
                         homepage: None,
+                        archived: false,
+                        auto_merge_enabled: false,
                     },
                 ),
                 permission_diffs: [],

@@ -619,6 +619,7 @@ impl std::fmt::Display for CreateRepoDiff {
     }
 }
 
+#[derive(Debug)]
 struct UpdateRepoDiff {
     org: String,
     name: String,
