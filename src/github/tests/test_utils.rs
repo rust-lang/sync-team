@@ -282,9 +282,9 @@ pub struct RepoData {
     #[builder(default)]
     pub branch_protections: Vec<v1::BranchProtection>,
     #[builder(default)]
-    archived: bool,
+    pub archived: bool,
     #[builder(default)]
-    allow_auto_merge: bool,
+    pub allow_auto_merge: bool,
 }
 
 impl RepoData {
