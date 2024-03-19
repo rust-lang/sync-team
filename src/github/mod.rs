@@ -506,6 +506,7 @@ fn construct_branch_protection(
             BranchProtectionMode::PrNotRequired => { vec![] }
         },
         push_allowances,
+        requires_approving_reviews: matches!(branch_protection.mode, BranchProtectionMode::PrNotRequired { .. })
     }
 }
 
