@@ -8,7 +8,7 @@ edition = "2021"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 log = "0.4"
 env_logger = "0.9"
-rust_team_data = { git = "https://github.com/rust-lang/team", features = ["email-encryption"] }
+rust_team_data = { git = "https://github.com/kobzol/team", branch = "branch-protection-mode", features = ["email-encryption"] }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = "1.0"
 base64 = "0.13"
