@@ -157,6 +157,7 @@ impl TeamData {
             website_data: None,
             roles: vec![],
             discord: vec![],
+            top_level: None,
         }
     }
 }
