@@ -1,5 +1,5 @@
 name: CI
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
   ci:
@@ -18,6 +18,11 @@ jobs:
 
       - name: Run tests
         run: cargo test
+
+      - name: Dry run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_API_READ_TOKEN }}
+        run: cargo run -- --only-print-plan github
 
       - name: Build the Docker container
         run: docker build -t sync-team .

@@ -1,0 +1,24 @@
+# Smoke test that checks if we can download team data and read from the GitHub API.
+name: Dry run
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Try to dry run every 4 hours
+    - cron: "0 */4 * * *"
+
+jobs:
+  run:
+    name: Perform a dry run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Dry run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_API_READ_TOKEN }}
+        run: cargo run -- --only-print-plan github
