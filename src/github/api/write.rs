@@ -392,6 +392,20 @@ impl GitHubWrite {
         Ok(())
     }
 
+    pub(crate) fn remove_user_from_organization(
+        &self,
+        org: &str,
+        user: &str,
+    ) -> anyhow::Result<()> {
+        if !self.dry_run {
+            let method = Method::DELETE;
+            let url = &format!("/orgs/{org}/members/{user}");
+            let response = self.client.req(method.clone(), url)?.send()?;
+            allow_not_found(response, method, url)?;
+        }
+        Ok(())
+    }
+
     /// Create or update a branch protection.
     pub(crate) fn upsert_branch_protection(
         &self,
