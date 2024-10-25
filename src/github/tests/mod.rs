@@ -117,6 +117,33 @@ fn team_dont_add_member_if_invitation_is_pending() {
 }
 
 #[test]
+fn org_member_not_sync() {
+    let mut model = DataModel::default();
+    let user = model.create_user("sakura");
+    let user2 = model.create_user("hitori");
+    model.create_team(TeamData::new("team-1").gh_team("members-gh", &[user, user2]));
+    let gh = model.gh_model();
+
+    model
+        .get_team("team-1")
+        .remove_gh_member("members-gh", user);
+
+    let gh_org_diff = model.diff_toml_gh_org_teams(gh);
+
+    insta::assert_debug_snapshot!(gh_org_diff, @r###"
+    Delete(
+        DeleteOrgMembershipDiff {
+            org_with_members: {
+                "rust-lang": {
+                    "hitori",
+                },
+            },
+        },
+    )
+    "###);
+}
+
+#[test]
 fn team_remove_member() {
     let mut model = DataModel::default();
     let user = model.create_user("mark");
