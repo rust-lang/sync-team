@@ -1,13 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use derive_builder::Builder;
-use rust_team_data::v1::{GitHubTeam, Person, TeamGitHub, TeamKind};
+use rust_team_data::v1::{GitHubTeam, Person, Team as TomlTeam, TeamGitHub, TeamKind};
 
 use crate::github::api::{
     BranchProtection, GithubRead, OrgAppInstallation, Repo, RepoAppInstallation, RepoTeam,
     RepoUser, Team, TeamMember, TeamPrivacy, TeamRole,
 };
-use crate::github::{api, SyncGitHub, TeamDiff};
+use crate::github::{api, OrgMembershipDiff, SyncGitHub, TeamDiff};
 
 const DEFAULT_ORG: &str = "rust-lang";
 
@@ -92,10 +92,27 @@ impl DataModel {
         GithubMock {
             users,
             owners: Default::default(),
+            members: Default::default(),
             teams,
             team_memberships,
             team_invitations: Default::default(),
         }
+    }
+
+    pub fn diff_toml_gh_org_teams(
+        &self,
+        github: GithubMock,
+        // members: HashSet<u64>,
+    ) -> OrgMembershipDiff {
+        let teams: Vec<TomlTeam> = self.teams.iter().map(|r| r.to_data()).collect();
+        let repos = vec![];
+        let read = Box::new(github);
+        let sync = SyncGitHub::new(read, teams, repos).expect("Cannot create SyncGitHub");
+
+        let org_team_members = sync.map_teams_to_org().unwrap();
+
+        sync.diff_teams_gh_org(org_team_members)
+            .expect("Cannot diff toml teams")
     }
 
     pub fn diff_teams(&self, github: GithubMock) -> Vec<TeamDiff> {
@@ -184,6 +201,9 @@ pub struct GithubMock {
     // org name -> user ID
     owners: HashMap<String, Vec<UserId>>,
     teams: Vec<Team>,
+
+    // org name -> user ID (members)
+    members: HashMap<String, Vec<UserId>>,
     // Team name -> members
     team_memberships: HashMap<String, HashMap<UserId, TeamMember>>,
     // Team name -> list of invited users
@@ -212,6 +232,16 @@ impl GithubRead for GithubMock {
     fn org_owners(&self, org: &str) -> anyhow::Result<HashSet<UserId>> {
         Ok(self
             .owners
+            .get(org)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .collect())
+    }
+
+    fn org_members(&self, org: &str) -> anyhow::Result<HashSet<u64>> {
+        Ok(self
+            .members
             .get(org)
             .cloned()
             .unwrap_or_default()
