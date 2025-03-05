@@ -5,7 +5,7 @@ mod tests;
 use self::api::{BranchProtectionOp, TeamPrivacy, TeamRole};
 use crate::github::api::{GithubRead, Login, PushAllowanceActor, RepoPermission, RepoSettings};
 use log::debug;
-use rust_team_data::v1::{Bot, BranchProtectionMode};
+use rust_team_data::v1::{Bot, BranchProtectionMode, MergeBot};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter, Write};
 
@@ -29,12 +29,17 @@ type RepoName = String;
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum GithubApp {
     RenovateBot,
+    /// New Rust implementation of Bors
+    Bors,
 }
 
 impl GithubApp {
+    /// You can find the GitHub app ID e.g. through `gh api apps/<name>` or through the
+    /// app settings page (if we own the app).
     fn from_id(app_id: u64) -> Option<Self> {
         match app_id {
             2740 => Some(GithubApp::RenovateBot),
+            278306 => Some(GithubApp::Bors),
             _ => None,
         }
     }
@@ -44,6 +49,7 @@ impl Display for GithubApp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             GithubApp::RenovateBot => f.write_str("RenovateBot"),
+            GithubApp::Bors => f.write_str("Bors"),
         }
     }
 }
@@ -108,7 +114,7 @@ impl SyncGitHub {
                 if let Some(app) = GithubApp::from_id(installation.app_id) {
                     let mut repositories = HashSet::new();
                     for repo_installation in
-                        github.app_installation_repos(installation.installation_id)?
+                        github.app_installation_repos(installation.installation_id, org)?
                     {
                         repositories.insert(repo_installation.name);
                     }
@@ -233,7 +239,7 @@ impl SyncGitHub {
 
         let mut member_diffs = Vec::new();
 
-        let mut current_members = self.github.team_memberships(&team)?;
+        let mut current_members = self.github.team_memberships(&team, &github_team.org)?;
         let invites = self
             .github
             .team_membership_invitations(&github_team.org, &github_team.name)?;
@@ -444,7 +450,8 @@ impl SyncGitHub {
         // Find apps that should be enabled on the repository
         for app in expected_repo.bots.iter().filter_map(|bot| match bot {
             Bot::Renovate => Some(GithubApp::RenovateBot),
-            _ => None,
+            Bot::Bors => Some(GithubApp::Bors),
+            Bot::Highfive | Bot::Rfcbot | Bot::RustTimer | Bot::Rustbot => None,
         }) {
             // Find installation ID of this app on GitHub
             let gh_installation = self
@@ -579,6 +586,7 @@ fn calculate_permission_diffs(
 /// Returns `None` if the bot is not an actual bot user, but rather a GitHub app.
 fn bot_user_name(bot: &Bot) -> Option<&str> {
     match bot {
+        // FIXME: set this to `None` once homu is removed completely
         Bot::Bors => Some("bors"),
         Bot::Highfive => Some("rust-highfive"),
         Bot::RustTimer => Some("rust-timer"),
@@ -588,7 +596,7 @@ fn bot_user_name(bot: &Bot) -> Option<&str> {
     }
 }
 
-fn convert_permission(p: &rust_team_data::v1::RepoPermission) -> RepoPermission {
+pub fn convert_permission(p: &rust_team_data::v1::RepoPermission) -> RepoPermission {
     use rust_team_data::v1;
     match *p {
         v1::RepoPermission::Write => RepoPermission::Write,
@@ -598,12 +606,12 @@ fn convert_permission(p: &rust_team_data::v1::RepoPermission) -> RepoPermission 
     }
 }
 
-fn construct_branch_protection(
+pub fn construct_branch_protection(
     expected_repo: &rust_team_data::v1::Repo,
     branch_protection: &rust_team_data::v1::BranchProtection,
 ) -> api::BranchProtection {
-    let uses_bors = expected_repo.bots.contains(&Bot::Bors);
-    let required_approving_review_count: u8 = if uses_bors {
+    let uses_homu = branch_protection.merge_bots.contains(&MergeBot::Homu);
+    let required_approving_review_count: u8 = if uses_homu {
         0
     } else {
         match branch_protection.mode {
@@ -628,7 +636,7 @@ fn construct_branch_protection(
         })
         .collect();
 
-    if uses_bors {
+    if uses_homu {
         push_allowances.push(PushAllowanceActor::User(api::UserPushAllowanceActor {
             login: "bors".to_owned(),
         }));
@@ -689,6 +697,7 @@ impl std::fmt::Display for Diff {
     }
 }
 
+#[derive(Debug)]
 enum RepoDiff {
     Create(CreateRepoDiff),
     Update(UpdateRepoDiff),
@@ -712,6 +721,7 @@ impl std::fmt::Display for RepoDiff {
     }
 }
 
+#[derive(Debug)]
 struct CreateRepoDiff {
     org: String,
     name: String,
@@ -738,7 +748,7 @@ impl CreateRepoDiff {
         }
 
         for installation in &self.app_installations {
-            installation.apply(sync, repo.repo_id)?;
+            installation.apply(sync, repo.repo_id, &self.org)?;
         }
 
         Ok(())
@@ -777,6 +787,7 @@ impl std::fmt::Display for CreateRepoDiff {
     }
 }
 
+#[derive(Debug)]
 struct UpdateRepoDiff {
     org: String,
     name: String,
@@ -828,7 +839,7 @@ impl UpdateRepoDiff {
         }
 
         for app_installation in &self.app_installation_diffs {
-            app_installation.apply(sync, self.repo_id)?;
+            app_installation.apply(sync, self.repo_id, &self.org)?;
         }
         Ok(())
     }
@@ -896,6 +907,7 @@ impl std::fmt::Display for UpdateRepoDiff {
     }
 }
 
+#[derive(Debug)]
 struct RepoPermissionAssignmentDiff {
     collaborator: RepoCollaborator,
     diff: RepoPermissionDiff,
@@ -947,18 +959,20 @@ impl std::fmt::Display for RepoPermissionAssignmentDiff {
     }
 }
 
+#[derive(Debug)]
 enum RepoPermissionDiff {
     Create(RepoPermission),
     Update(RepoPermission, RepoPermission),
     Delete(RepoPermission),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum RepoCollaborator {
     Team(String),
     User(String),
 }
 
+#[derive(Debug)]
 struct BranchProtectionDiff {
     pattern: String,
     operation: BranchProtectionDiffOperation,
@@ -978,6 +992,7 @@ impl BranchProtectionDiff {
                     BranchProtectionOp::CreateForRepo(repo_id.to_string()),
                     &self.pattern,
                     bp,
+                    org,
                 )?;
             }
             BranchProtectionDiffOperation::Update(id, _, bp) => {
@@ -985,6 +1000,7 @@ impl BranchProtectionDiff {
                     BranchProtectionOp::UpdateBranchProtection(id.clone()),
                     &self.pattern,
                     bp,
+                    org,
                 )?;
             }
             BranchProtectionDiffOperation::Delete(id) => {
@@ -1048,25 +1064,27 @@ fn log_branch_protection(
     Ok(())
 }
 
+#[derive(Debug)]
 enum BranchProtectionDiffOperation {
     Create(api::BranchProtection),
     Update(String, api::BranchProtection, api::BranchProtection),
     Delete(String),
 }
 
+#[derive(Debug)]
 enum AppInstallationDiff {
     Add(AppInstallation),
     Remove(AppInstallation),
 }
 
 impl AppInstallationDiff {
-    fn apply(&self, sync: &GitHubWrite, repo_id: u64) -> anyhow::Result<()> {
+    fn apply(&self, sync: &GitHubWrite, repo_id: u64, org: &str) -> anyhow::Result<()> {
         match self {
             AppInstallationDiff::Add(app) => {
-                sync.add_repo_to_app_installation(app.installation_id, repo_id)?;
+                sync.add_repo_to_app_installation(app.installation_id, repo_id, org)?;
             }
             AppInstallationDiff::Remove(app) => {
-                sync.remove_repo_from_app_installation(app.installation_id, repo_id)?;
+                sync.remove_repo_from_app_installation(app.installation_id, repo_id, org)?;
             }
         }
         Ok(())
