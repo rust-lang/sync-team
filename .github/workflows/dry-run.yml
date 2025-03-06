@@ -97,4 +97,4 @@ jobs:
           GITHUB_TOKEN_RUST_ANALYZER: ${{ steps.rust-analyzer-token.outputs.token }}
           GITHUB_TOKEN_RUST_EMBEDDED: ${{ steps.rust-embedded-token.outputs.token }}
           GITHUB_TOKEN_RUST_DEV_TOOLS: ${{ steps.rust-dev-tools-token.outputs.token }}
-        run: cargo run -- print-plan --services github
+        run: 'curl -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GITHUB_TOKEN_RUST_LANG}" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/rust-lang/async-fundamentals-initiative'
