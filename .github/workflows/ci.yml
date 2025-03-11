@@ -62,8 +62,9 @@ jobs:
 
   sync:
     name: Sync
-    if: github.event_name == 'merge_group'
+    #    if: github.event_name == 'merge_group'
     uses: ./.github/workflows/deploy.yml
+    secrets: inherit
 
   # Summary job for the merge queue.
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
