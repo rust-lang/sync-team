@@ -1,0 +1,19 @@
+# Reusable workflow that checks out sync-team, builds it and performs the sync from the
+# current state of the team repository.
+name: Sync
+on:
+  workflow_call:
+
+jobs:
+  sync:
+    name: Perform sync
+    runs-on: ubuntu-latest
+    environment: deploy
+    steps:
+      # Uses either ${{ github.sha }} when invoked from this repository, otherwise the
+      # default branch.
+      - uses: actions/checkout@v4
+      # For now, just print the plan, to test the token
+      - name: Perform sync
+        run: |
+          GITHUB_TOKEN=${{ secrets.SYNC_GITHUB_TOKEN }} cargo run -- print-plan --services github

@@ -23,7 +23,7 @@ jobs:
 
       - name: Run clippy
         run: cargo clippy -- -Dwarnings
-  deploy:
+  deploy_to_aws:
     name: Deploy
     needs: [ test ]
     environment: deploy
@@ -60,11 +60,16 @@ jobs:
           aws --region us-west-1 lambda invoke --function-name start-sync-team output.json
           cat output.json | python3 -m json.tool
 
+  sync:
+    name: Sync
+    if: github.event_name == 'merge_group'
+    uses: ./.github/workflows/deploy.yml
+
   # Summary job for the merge queue.
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
   conclusion:
     name: CI
-    needs: [ test, deploy ]
+    needs: [ test, sync, deploy_to_aws ]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
