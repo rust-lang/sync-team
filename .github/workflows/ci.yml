@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: echo ${{ github.sha }}
 
       - uses: Swatinem/rust-cache@v2
 
@@ -23,6 +24,10 @@ jobs:
 
       - name: Run clippy
         run: cargo clippy -- -Dwarnings
+  workflow_test:
+    name: Workflow test
+    runs-on: ubuntu-latest
+    uses: ./.github/workflows/shared/run.yml
   deploy:
     name: Deploy
     needs: [ test ]

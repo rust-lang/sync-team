@@ -1,0 +1,11 @@
+name: Run sync-team
+on:
+  workflow_call:
+
+jobs:
+  run:
+    name: Run the sync-team tool
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print SHA
+        run: echo ${{ github.sha }}
