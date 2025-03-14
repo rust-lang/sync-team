@@ -4,6 +4,7 @@ use crate::github::api::{
     url::GitHubUrl, user_node_id,
 };
 use anyhow::Context;
+use log::info;
 use reqwest::Method;
 use std::collections::{HashMap, HashSet};
 
@@ -166,6 +167,7 @@ impl GithubRead for GitHubApiRead {
                 &Method::GET,
                 &GitHubUrl::new(&url, org),
                 |response: InstallationPage| {
+                    info!("installation response for org {org}: {response:?}");
                     installations.extend(response.repositories);
                     Ok(())
                 },
