@@ -365,8 +365,19 @@ impl SyncGitHub {
             expected_repo.org,
             expected_repo.name
         );
+        log::info!(
+            "bots for repo {}/{}: {:?}",
+            expected_repo.org,
+            expected_repo.name,
+            expected_repo.bots
+        );
         let app_installation_diffs =
             self.diff_app_installations(expected_repo, &existing_installations)?;
+        log::info!(
+            "App installation diffs for repo {}/{}: {app_installation_diffs:?}",
+            expected_repo.org,
+            expected_repo.name
+        );
         Ok(RepoDiff::Update(UpdateRepoDiff {
             org: expected_repo.org.clone(),
             name: actual_repo.name,
