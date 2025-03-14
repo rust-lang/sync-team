@@ -360,6 +360,11 @@ impl SyncGitHub {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
+        log::info!(
+            "Installations for repo {}/{}: {existing_installations:?}",
+            expected_repo.org,
+            expected_repo.name
+        );
         let app_installation_diffs =
             self.diff_app_installations(expected_repo, &existing_installations)?;
         Ok(RepoDiff::Update(UpdateRepoDiff {
