@@ -118,6 +118,9 @@ impl SyncGitHub {
                     {
                         repositories.insert(repo_installation.name);
                     }
+                    log::info!(
+                        "repositories for app installation {installation:?}: {repositories:?}"
+                    );
                     installations.push(OrgAppInstallation {
                         app,
                         installation_id: installation.installation_id,
