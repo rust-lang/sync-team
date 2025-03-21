@@ -557,14 +557,14 @@ impl Diff {
 
 impl std::fmt::Display for Diff {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if !self.team_diffs.is_empty() {
+        if self.team_diffs.iter().any(|d| !d.noop()) {
             writeln!(f, "💻 Team Diffs:")?;
             for team_diff in &self.team_diffs {
                 write!(f, "{team_diff}")?;
             }
         }
 
-        if !&self.repo_diffs.is_empty() {
+        if self.repo_diffs.iter().any(|d| !d.noop()) {
             writeln!(f, "💻 Repo Diffs:")?;
             for repo_diff in &self.repo_diffs {
                 write!(f, "{repo_diff}")?;
@@ -586,6 +586,13 @@ impl RepoDiff {
         match self {
             RepoDiff::Create(c) => c.apply(sync),
             RepoDiff::Update(u) => u.apply(sync),
+        }
+    }
+
+    fn noop(&self) -> bool {
+        match self {
+            RepoDiff::Create(_c) => false,
+            RepoDiff::Update(u) => u.noop(),
         }
     }
 }
@@ -943,6 +950,13 @@ impl TeamDiff {
         }
 
         Ok(())
+    }
+
+    fn noop(&self) -> bool {
+        match self {
+            TeamDiff::Create(_) | TeamDiff::Delete(_) => false,
+            TeamDiff::Edit(e) => e.noop(),
+        }
     }
 }
 
