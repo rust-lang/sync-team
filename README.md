@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> This repository was moved to https://github.com/rust-lang/team
+
 # Team synchronization tool
 
 This repository contains the CLI tool used to synchronize the contents of the
